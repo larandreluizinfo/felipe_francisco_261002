@@ -61,6 +61,7 @@ a{color:#facc15}
 <button data-tab="batalha">⚔️ Batalha</button>
 <button data-tab="time">🎒 Time / Pokédex</button>
 <button data-tab="loja">🏪 Loja</button>
+<button data-tab="hospital">🏥 Hospital</button>
 <button data-tab="ginasio">🏆 Ginásios e Liga</button>
 <button data-tab="missao">⭐ Missão</button>
 </div>
@@ -123,6 +124,17 @@ a{color:#facc15}
 <div class="card">🧪 Poção (cura 50HP) — 300₽<br><button class="blue" onclick="buy('potion')">Comprar</button></div>
 </div>
 <button class="big" onclick="healAll()">💚 Curar time no Centro Pokémon (grátis)</button>
+</div>
+<div id="tab-hospital" class="card" style="display:none">
+<h2>🏥 Hospital Pokémon — Recupere seus Pokémons</h2>
+<p>Bem-vindo ao Hospital da Enfermeira Joy! Aqui você cura seu time de graça. Pokémons desmaiados voltam com HP cheio!</p>
+<div style="text-align:center;font-size:64px">👩‍⚕️💚</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin:12px 0">
+<button class="big" onclick="healAllHospital()">💚 Curar TODO o time (grátis)</button>
+<button class="blue" onclick="healAllHospital();switchTab('explorar')">⚡ Curar e voltar a explorar</button>
+</div>
+<div id="hospitalList" class="grid g3"></div>
+<p id="hospitalMsg" style="font-weight:700;color:#4ade80"></p>
 </div>
 <div id="tab-ginasio" class="card" style="display:none">
 <h2>🏆 Ginásios (8 insígnias) + Treinadores + Liga</h2>
@@ -248,9 +260,13 @@ function filterDex(f){dexFilter=f;renderDex();}
 function buy(k){const price={poke:200,great:600,ultra:1200,potion:300}[k];if(S.money<price){alert("Sem dinheiro! Vença batalhas.");return;}S.money-=price;if(k==="potion")S.potions++;else S.balls[k]++;save();renderAll();}
 function healAll(){S.party.forEach(p=>p.hp=p.maxhp);S.box.forEach(p=>p.hp=p.maxhp);save();renderAll();alert("💚 Time curado no Centro Pokémon!");}
 // ===== NAV =====
-function switchTab(t){document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("active",b.dataset.tab===t));["mapa","explorar","batalha","time","loja","ginasio","missao"].forEach(x=>document.getElementById("tab-"+x).style.display=x===t?"block":"none");}
+function switchTab(t){document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("active",b.dataset.tab===t));["mapa","explorar","batalha","time","loja","hospital","ginasio","missao"].forEach(x=>document.getElementById("tab-"+x).style.display=x===t?"block":"none");if(t==="hospital")renderHospital();}
 document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
-function renderAll(){updateStats();renderMap();renderParty();renderGyms();renderDex();if(BATTLE)renderBattle();}
+function renderAll(){updateStats();renderMap();renderParty();renderGyms();renderDex();renderHospital();if(BATTLE)renderBattle();}
+// ===== HOSPITAL =====
+function renderHospital(){const el=document.getElementById("hospitalList");if(!el)return;el.innerHTML="";if(!S.party.length){el.innerHTML="<p>Você ainda não tem Pokémons. Escolha seu inicial!</p>";return;}S.party.forEach((p,i)=>{const pct=Math.floor(p.hp/p.maxhp*100);const ok=p.hp>=p.maxhp;const d=document.createElement("div");d.className="card";d.style.borderColor=p.hp<=0?"#ef4444":ok?"#22c55e":"#f59e0b";d.innerHTML="<div style='font-size:40px'>"+emojiFor(POKE[p.id][2])+"</div><b>"+pname(p.id)+"</b><br>Nv."+p.level+"<br>"+p.hp+"/"+p.maxhp+" HP ("+pct+"%)<div class='hpbar'><div class='hpfill"+(pct<30?" low":"")+"' style='width:"+pct+"%'></div></div><p>"+(p.hp<=0?"💀 Desmaiado!":ok?"💚 Saudável!":"🤕 Machucado")+"</p>"+(ok?"<b>✅ Não precisa de cura</b>":"<button class='big' onclick='healOne("+i+")'>💚 Curar este</button>");el.appendChild(d);});const faint=S.party.filter(p=>p.hp<=0).length;const hurt=S.party.filter(p=>p.hp<p.maxhp).length;document.getElementById("hospitalMsg").textContent=hurt===0?"✨ Todos os Pokémons estão com HP cheio!":faint>0?"🚨 "+faint+" desmaiado(s)! Cure urgente!":"🩹 "+hurt+" precisando de cura.";}
+function healOne(i){S.party[i].hp=S.party[i].maxhp;save();renderAll();renderHospital();log("💚 "+POKE[S.party[i].id][1]+" curado no Hospital!","log-good");}
+function healAllHospital(){S.party.forEach(p=>p.hp=p.maxhp);S.box.forEach(p=>p.hp=p.maxhp);save();renderAll();renderHospital();document.getElementById("hospitalMsg").textContent="💚 Todos curados pela Enfermeira Joy! Boa aventura!";alert("🏥💚 Todos os seus Pokémons foram recuperados no Hospital!");}
 function resetSave(){if(confirm("Apagar tudo e recomeçar?")){localStorage.removeItem("pokemon_kanto_ff");location.reload();}}
 // init
 if(load()&&S.party.length){document.getElementById("starterModal").style.display="none";}else{S=defaultSave();}
