@@ -30,6 +30,9 @@ button.ghost{background:#334155;color:#fff;border:1px solid #475569;padding:8px 
 .dex div{background:#0f172a;border:1px solid #334155;border-radius:10px;padding:8px;text-align:center;font-size:.75rem}
 .dex .caught{border-color:#22c55e;background:#052e16}
 .dex .seen{border-color:#f59e0b}
+.dex img{width:72px;height:72px;image-rendering:pixelated;background:#fff;border-radius:10px}
+.dex .missing-img{filter:grayscale(1);opacity:.9}
+.dex .missing{border-style:dashed}
 #battlelog{background:#020617;border-radius:10px;padding:10px;height:160px;overflow-y:auto;font-size:.9rem;border:1px solid #334155}
 .type{font-size:.7rem;padding:2px 8px;border-radius:999px;color:#111;font-weight:800;margin:1px;display:inline-block}
 footer{text-align:center;padding:20px;color:#94a3b8;font-size:.85rem}
@@ -153,6 +156,9 @@ a{color:#facc15}
 <li>Vença a <b>Elite 4 + Campeão</b> na Liga Pokémon</li>
 </ol>
 <div id="missionStatus"></div>
+<h3>❓ Pokémons que faltam (<span id="missingCount"></span>) — imagem + nome + onde capturar</h3>
+<p style="font-size:.85rem;color:#a5b4fc">A lista abaixo mostra quem falta para completar os 151, com foto e dica da cidade.</p>
+<div class="dex" id="missingList"></div>
 <button class="warn" onclick="resetSave()">🗑️ Recomeçar jogo</button>
 </div>
 </main>
@@ -161,9 +167,9 @@ a{color:#facc15}
 <h2>🎉 Bem-vindo a Kanto, treinador!</h2>
 <p>Escolha seu Pokémon inicial:</p>
 <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-<div class="starter" onclick="chooseStarter(1)"><div style="font-size:64px">🌱</div><b>Bulbasaur</b><br>Grama/Veneno</div>
-<div class="starter" onclick="chooseStarter(4)"><div style="font-size:64px">🔥</div><b>Charmander</b><br>Fogo</div>
-<div class="starter" onclick="chooseStarter(7)"><div style="font-size:64px">💧</div><b>Squirtle</b><br>Água</div>
+<div class="starter" onclick="chooseStarter(1)"><img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1.png" width="96" height="96" alt="Bulbasaur"><br><b>Bulbasaur</b><br>Grama/Veneno</div>
+<div class="starter" onclick="chooseStarter(4)"><img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/4.png" width="96" height="96" alt="Charmander"><br><b>Charmander</b><br>Fogo</div>
+<div class="starter" onclick="chooseStarter(7)"><img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/7.png" width="96" height="96" alt="Squirtle"><br><b>Squirtle</b><br>Água</div>
 </div>
 <p>Depois explore, capture os 151, ganhe 8 insígnias e vença a Liga!</p>
 </div></div>
@@ -173,6 +179,8 @@ const POKE=[["", ""],[1,"Bulbasaur","Grama","Veneno"],[2,"Ivysaur","Grama","Vene
 const EMOJI={Grama:"🌱",Veneno:"☠️",Fogo:"🔥",Voador:"🦅",Água:"💧",Inseto:"🐛",Normal:"🐾",Elétrico:"⚡",Terra:"⛰️",Fada:"🧚",Lutador:"🥊",Psíquico:"🔮",Pedra:"🪨",Fantasma:"👻",Gelo:"❄️",Aço:"🔩",Dragão:"🐉"};
 const TYPECOLOR={Grama:"#78C850",Veneno:"#A040A0",Fogo:"#EE8130",Voador:"#A98FF3",Água:"#6390F0",Inseto:"#A6B91A",Normal:"#A8A77A",Elétrico:"#F7D02C",Terra:"#E2BF65",Fada:"#D685AD",Lutador:"#C22E28",Psíquico:"#F95587",Pedra:"#B6A136",Fantasma:"#735797",Gelo:"#96D9D6",Aço:"#B7B7CE",Dragão:"#6F35FC"};
 function emojiFor(t1,t2){return EMOJI[t1]||"❓";}
+function sprite(id){return "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/"+id+".png";}
+function whereToFind(id){const out=[];CITIES.forEach(c=>{if(c.wild.includes(id))out.push(c.name);});for(const k in EVOLVE){if(EVOLVE[k].to===id)out.push("evolui de "+POKE[k][1]);}if(id===150)out.push("raro no Planalto Índigo");if(id===151)out.push("ultra-raro no Planalto Índigo");return out.length?out.slice(0,3).join(" / "):"explore Kanto";}
 function baseStats(id){if(id>=144&&id<=146)return{hp:90,atk:85,def:80,rate:0.08,lvl:50};if(id===150)return{hp:106,atk:110,def:90,rate:0.03,lvl:60};if(id===151)return{hp:100,atk:100,def:100,rate:0.03,lvl:50};if(id===143||id===131)return{hp:120,atk:70,def:60,rate:0.12,lvl:30};const ev=(id%10===3||id%10===6||id%10===9)?1.3:1;return{hp:Math.floor((35+id%40)*ev),atk:Math.floor((30+id%50)*ev),def:Math.floor((30+id%45)*ev),rate:id%10<=2?0.45:0.3,lvl:2+Math.floor(id/12)};}
 const EVOLVE={1:{to:2,at:16},2:{to:3,at:32},4:{to:5,at:16},5:{to:6,at:36},7:{to:8,at:16},8:{to:9,at:36},10:{to:11,at:7},11:{to:12,at:10},13:{to:14,at:7},14:{to:15,at:10},16:{to:17,at:18},17:{to:18,at:36},19:{to:20,at:20},21:{to:22,at:20},23:{to:24,at:28},27:{to:28,at:28},29:{to:30,at:16},30:{to:31,at:30},32:{to:33,at:16},33:{to:34,at:30},41:{to:42,at:22},43:{to:44,at:21},44:{to:45,at:30},46:{to:47,at:24},48:{to:49,at:31},50:{to:51,at:26},52:{to:53,at:28},54:{to:55,at:33},56:{to:57,at:28},58:{to:59,at:35},60:{to:61,at:25},61:{to:62,at:35},63:{to:64,at:16},64:{to:65,at:35},66:{to:67,at:28},67:{to:68,at:38},69:{to:70,at:21},70:{to:71,at:30},74:{to:75,at:25},75:{to:76,at:35},77:{to:78,at:40},79:{to:80,at:37},92:{to:93,at:25},93:{to:94,at:38},98:{to:99,at:28},109:{to:110,at:35},111:{to:112,at:42},116:{to:117,at:32},118:{to:119,at:33},129:{to:130,at:20},133:{to:134,at:25},147:{to:148,at:30},148:{to:149,at:55}};
 // ===== CIDADES =====
@@ -254,8 +262,9 @@ function challengeEliteByName(n){challengeElite(ELITE.find(e=>e.name===n));}
 function renderParty(){const el=document.getElementById("partyList");if(!el)return;el.innerHTML="";S.party.forEach((p,i)=>{const d=document.createElement("div");d.className="card";d.innerHTML="<div style='font-size:40px'>"+emojiFor(POKE[p.id][2])+"</div><b>"+pname(p.id)+"</b><br>Nv."+p.level+" XP:"+p.xp+"<br>"+p.hp+"/"+p.maxhp+" HP<div class='hpbar'><div class='hpfill' style='width:"+(p.hp/p.maxhp*100)+"%'></div></div>"+typeBadges(p.id)+"<br><button class='ghost' onclick='setLead("+i+")'>⭐ Primeiro</button> <button class='ghost' onclick='releasePoke("+i+")'>Soltar</button>";el.appendChild(d);});document.getElementById("boxList").textContent=S.box.length?S.box.map(p=>POKE[p.id][1]+" Nv"+p.level).join(", "):"Caixa vazia.";renderDex();}
 function setLead(i){const[p]=S.party.splice(i,1);S.party.unshift(p);save();renderAll();}
 function releasePoke(i){if(S.party.length<=1){alert("Não pode soltar o último!");return;}if(confirm("Soltar?")){S.party.splice(i,1);save();renderAll();}}
-function renderDex(){const g=document.getElementById("dexGrid");if(!g)return;g.innerHTML="";let c=0;for(let id=1;id<=151;id++){const caught=!!S.caught[id],seen=!!S.seen[id];if(caught)c++;if(dexFilter==="caught"&&!caught)continue;if(dexFilter==="missing"&&caught)continue;const d=document.createElement("div");d.className=caught?"caught":seen?"seen":"";d.innerHTML="<div style='font-size:32px'>"+(caught||seen?emojiFor(POKE[id][2]):"❓")+"</div><b>#"+id+"</b><br>"+(caught||seen?POKE[id][1]:"???")+"<br><small>"+(caught?"✅":seen?"👁️ visto":"🔒")+"</small>";g.appendChild(d);}document.getElementById("dexCount").textContent=c+"/151";const ms=document.getElementById("missionStatus");if(ms)ms.innerHTML="<p>📖 Pokédex: <b>"+c+"/151 ("+Math.floor(c/151*100)+"%)</b></p><p>🎖️ Insígnias: "+(S.badges.join(", ")||"nenhuma")+" ("+S.badges.length+"/8)</p><p>🧑‍🏫 Treinadores: "+S.beatTrainers.length+"/"+TRAINERS.length+"</p><p>👑 Liga: "+S.beatElite.length+"/5 "+(S.champion?"— 🏆 CAMPEÃO!":"")+"</p>"+(c>=151?"<h3>🌟 INCRÍVEL! Pokédex completa! Você é um MESTRE POKÉMON!</h3>":"");}
+function renderDex(){const g=document.getElementById("dexGrid");if(!g)return;g.innerHTML="";let c=0;for(let id=1;id<=151;id++){const caught=!!S.caught[id],seen=!!S.seen[id];if(caught)c++;if(dexFilter==="caught"&&!caught)continue;if(dexFilter==="missing"&&caught)continue;const d=document.createElement("div");d.className=caught?"caught":seen?"seen":"missing";d.innerHTML="<img loading='lazy' src='"+sprite(id)+"' alt='"+POKE[id][1]+"' class='"+(caught?"":"missing-img")+"'><br><b>#"+id+"</b><br>"+POKE[id][1]+"<br><small>"+POKE[id][2]+(POKE[id][3]?"/"+POKE[id][3]:"")+"</small><br><small>"+(caught?"✅ capturado":seen?"👁️ visto":"🔒 falta")+"</small>";g.appendChild(d);}document.getElementById("dexCount").textContent=c+"/151";const ms=document.getElementById("missionStatus");if(ms)ms.innerHTML="<p>📖 Pokédex: <b>"+c+"/151 ("+Math.floor(c/151*100)+"%)</b></p><p>🎖️ Insígnias: "+(S.badges.join(", ")||"nenhuma")+" ("+S.badges.length+"/8)</p><p>🧑‍🏫 Treinadores: "+S.beatTrainers.length+"/"+TRAINERS.length+"</p><p>👑 Liga: "+S.beatElite.length+"/5 "+(S.champion?"— 🏆 CAMPEÃO!":"")+"</p>"+(c>=151?"<h3>🌟 INCRÍVEL! Pokédex completa! Você é um MESTRE POKÉMON!</h3>":"");renderMissing(c);}
 function filterDex(f){dexFilter=f;renderDex();}
+function renderMissing(caughtCount){const el=document.getElementById("missingList");if(!el)return;el.innerHTML="";let miss=0;for(let id=1;id<=151;id++){if(S.caught[id])continue;miss++;const d=document.createElement("div");d.className="missing";d.innerHTML="<img loading='lazy' src='"+sprite(id)+"' alt='"+POKE[id][1]+"' class='missing-img'><br><b>#"+id+" "+POKE[id][1]+"</b><br><small>"+POKE[id][2]+(POKE[id][3]?"/"+POKE[id][3]:"")+"</small><br><small style='color:#facc15'>📍 "+whereToFind(id)+"</small>";el.appendChild(d);}const mc=document.getElementById("missingCount");if(mc)mc.textContent=miss+" faltam";if(miss===0)el.innerHTML="<h3>🎉 Nenhum faltando! Pokédex completa!</h3>";}
 // ===== LOJA =====
 function buy(k){const price={poke:200,great:600,ultra:1200,potion:300}[k];if(S.money<price){alert("Sem dinheiro! Vença batalhas.");return;}S.money-=price;if(k==="potion")S.potions++;else S.balls[k]++;save();renderAll();}
 function healAll(){S.party.forEach(p=>p.hp=p.maxhp);S.box.forEach(p=>p.hp=p.maxhp);save();renderAll();alert("💚 Time curado no Centro Pokémon!");}
